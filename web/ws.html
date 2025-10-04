@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+
+<body>
+    <h3>WS test</h3>
+    <input id="msg" placeholder="type message" />
+    <button id="send">Send</button>
+    <pre id="log"></pre>
+
+    <script>
+        const log = (t) => document.getElementById('log').textContent += t + "\n";
+
+        const ws = new WebSocket("ws://localhost:8000/websocket");
+        ws.onopen = () => log("[open]");
+        ws.onmessage = (e) => log("[recv] " + e.data);
+        ws.onclose = () => log("[close]");
+
+        document.getElementById('send').onclick = () => {
+            const v = document.getElementById('msg').value;
+            ws.send(v);
+        };
+
+        // second connection to demo streaming
+        const ws2 = new WebSocket("ws://localhost:8000/websocket/stream");
+        ws2.onmessage = (e) => log("[stream] " + e.data);
+    </script>
+</body>
+
+</html>
