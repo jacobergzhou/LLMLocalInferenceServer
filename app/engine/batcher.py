@@ -1,6 +1,6 @@
 import asyncio
 from dataclasses import dataclass, field
-from typing import AsyncIterator, Dict, List, Optional
+from typing import AsyncIterator, Dict, List
 
 from app.model.toy_model import generate_tokens
 
