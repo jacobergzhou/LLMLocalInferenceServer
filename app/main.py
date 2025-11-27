@@ -1,29 +1,60 @@
+import time
+import uuid
 from fastapi import FastAPI, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import asyncio
 
-from app.models import ChatRequest
+from app.models import ChatRequest, ChatResponse, Choice, Message, Usage
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/health_check")
 async def health_check():
     return JSONResponse({"status": "ok"})
 
 @app.post("/chat")
-async def chat_endpoint(req: ChatRequest):
-    last_user_message = ""
-    for m in reversed(req.messages):
-        if m.role == "user":
-            last_user_message = m.content
-            break
-    return {
-        "model": req.model,
-        "reply": f"Echo: {last_user_message}",
-        "used_max_tokens": req.max_tokens,
-        "temperature": req.temperature,
-        "stream": req.stream
-    }
+async def chat_endpoint(request: ChatRequest) -> ChatResponse:
+    # 1. very naive "toy" completion
+    user_message = request.messages[-1].content if request.messages else ""
+    completion_text = f"Echo: {user_message}"
+
+    # 2. fake token counting (later: count properly)
+    prompt_tokens = len(user_message.split())
+    completion_tokens = len(completion_text.split())
+    total_tokens = prompt_tokens + completion_tokens
+
+    # 3. build response
+    now = int(time.time())
+    completion_id = f"chatcmpl-{uuid.uuid4().hex[:8]}"
+
+    choice = Choice(
+        index=0,
+        message=Message(role="assistant", content=completion_text),
+        finish_reason="stop",
+    )
+
+    usage = Usage(
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        total_tokens=total_tokens,
+    )
+
+    return ChatResponse(
+        id=completion_id,
+        created=now,
+        model=request.model,
+        choices=[choice],
+        usage=usage,
+    )
+
 
 @app.websocket("/websocket")
 async def ws_endpoint(ws: WebSocket):

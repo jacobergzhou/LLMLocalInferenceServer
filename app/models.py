@@ -37,8 +37,6 @@ class ChatRequest(BaseModel):
 
 
 # ---- Response ----
-
-
 class Choice(BaseModel):
     index: int
     message: Message

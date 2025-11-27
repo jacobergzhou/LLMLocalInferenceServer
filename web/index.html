@@ -2,22 +2,67 @@
 <html>
 
 <body>
-    <h3>WS test</h3>
+    <h3>WebSocket Chat (pydantic payload)</h3>
+    <label>
+        Model:
+        <input id="model" value="toy-model" />
+    </label>
+    <label>
+        Temperature:
+        <input id="temp" type="number" step="0.1" value="0.7" />
+    </label>
+    <label>
+        Max tokens:
+        <input id="maxTokens" type="number" value="128" />
+    </label>
+    <label>
+        Stream:
+        <input id="stream" type="checkbox" checked />
+    </label>
+    <br />
     <input id="msg" placeholder="type message" />
-    <button id="send">Send</button>
+    <button id="sendWs">Send via WebSocket</button>
+    <button id="sendHttp">Send via /chat</button>
     <pre id="log"></pre>
 
     <script>
         const log = (t) => document.getElementById('log').textContent += t + "\n";
+
+        const buildPayload = () => ({
+            model: document.getElementById('model').value || "toy-model",
+            messages: [{
+                role: "user",
+                content: document.getElementById('msg').value
+            }],
+            temperature: Number(document.getElementById('temp').value) || 0.7,
+            max_tokens: Number(document.getElementById('maxTokens').value) || 128,
+            stream: document.getElementById('stream').checked
+        });
 
         const ws = new WebSocket("ws://localhost:8000/websocket");
         ws.onopen = () => log("[open]");
         ws.onmessage = (e) => log("[recv] " + e.data);
         ws.onclose = () => log("[close]");
 
-        document.getElementById('send').onclick = () => {
-            const v = document.getElementById('msg').value;
-            ws.send(v);
+        document.getElementById('sendWs').onclick = () => {
+            const payload = buildPayload();
+            ws.send(JSON.stringify(payload));
+            log("[ws sent] " + JSON.stringify(payload));
+        };
+
+        document.getElementById('sendHttp').onclick = async () => {
+            const payload = buildPayload();
+            try {
+                const res = await fetch("http://localhost:8000/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const text = await res.text();
+                log("[/chat] status " + res.status + ": " + text);
+            } catch (err) {
+                log("[/chat error] " + err);
+            }
         };
 
         // second connection to demo streaming
