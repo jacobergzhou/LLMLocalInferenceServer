@@ -4,6 +4,8 @@ from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import asyncio
+from starlette.requests import Request
+from app.config import MODEL_REGISTRY
 
 from app.engine.chat_engine import run_toy_llm
 from app.models import ChatRequest, ChatResponse, Choice, Message, Usage
@@ -17,6 +19,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    request.state.request_id = str(uuid.uuid4())
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request.state.request_id
+    return response
+
 @app.get("/health_check")
 async def health_check():
     return JSONResponse({"status": "ok"})
@@ -24,7 +33,7 @@ async def health_check():
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     # 1. very naive "toy" completion
-    completion_text = await run_toy_llm(request.messages[-1].content if request.messages else "")
+    completion_text = await MODEL_REGISTRY["toy-llm-v1"](request.messages[-1].content if request.messages else "")
     user_message = request.messages[-1].content if request.messages else ""
 
     # 2. fake token counting (later: count properly)
