@@ -21,7 +21,8 @@
     </label>
     <br />
     <input id="msg" placeholder="type message" />
-    <button id="sendWs">Send via WebSocket</button>
+    <button id="sendWs">Send via /websocket</button>
+    <button id="sendChatStream">Send via /chat/stream</button>
     <button id="sendHttp">Send via /chat</button>
     <pre id="log"></pre>
 
@@ -48,6 +49,19 @@
             const payload = buildPayload();
             ws.send(JSON.stringify(payload));
             log("[ws sent] " + JSON.stringify(payload));
+        };
+
+        document.getElementById('sendChatStream').onclick = () => {
+            const payload = buildPayload();
+            const chatStream = new WebSocket("ws://localhost:8000/chat/stream");
+
+            chatStream.onopen = () => {
+                chatStream.send(JSON.stringify(payload));
+                log("[chat/stream open]");
+            };
+            chatStream.onmessage = (e) => log("[chat/stream recv] " + e.data);
+            chatStream.onerror = (e) => log("[chat/stream error] " + e);
+            chatStream.onclose = () => log("[chat/stream close]");
         };
 
         document.getElementById('sendHttp').onclick = async () => {

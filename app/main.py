@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import asyncio
 
+from app.engine.chat_engine import run_toy_llm
 from app.models import ChatRequest, ChatResponse, Choice, Message, Usage
 
 app = FastAPI()
@@ -23,8 +24,8 @@ async def health_check():
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     # 1. very naive "toy" completion
+    completion_text = await run_toy_llm(request.messages[-1].content if request.messages else "")
     user_message = request.messages[-1].content if request.messages else ""
-    completion_text = f"Echo: {user_message}"
 
     # 2. fake token counting (later: count properly)
     prompt_tokens = len(user_message.split())
@@ -54,6 +55,17 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         choices=[choice],
         usage=usage,
     )
+
+@app.websocket("/chat/stream")
+async def chat_stream_endpoint(ws: WebSocket):
+    await ws.accept()
+    payload = await ws.receive_text()
+    req = ChatRequest.model_validate_json(payload)
+    output = "hello world, this is a streaming response demo"
+    for ch in output:
+        await ws.send_text(ch)
+        await asyncio.sleep(0.1)
+    await ws.close()
 
 
 @app.websocket("/websocket")
